@@ -7,10 +7,9 @@ using Aurora.Devices;
 using Aurora.Utils;
 using Aurora.Settings;
 using System.Collections.Generic;
-using System;
 using System.Diagnostics;
 using SharpDX.RawInput;
-using System.Windows.Media;
+
 
 
 public class LightDecayEffect : IEffectScript
@@ -101,7 +100,7 @@ public class LightDecayEffect : IEffectScript
     private double updateProgress(VariableRegistry settings, double currProgress, long ms)
     {
         long curr_ms = (long)(currProgress * (double)settings.GetVariable<long>("decay"));
-        curr_ms += ms;
+        curr_ms -= ms;
         double new_progress = (double)curr_ms / (double)settings.GetVariable<long>("decay");
         return new_progress;
 
@@ -143,14 +142,14 @@ public class LightDecayEffect : IEffectScript
                 long currColor = key_prev_state.currColor;
                 long currKick = settings.GetVariable<long>("kick");
                 key_prev_state.currColor = currColor + currKick > numberOfColors ? numberOfColors : currColor + currKick;
-                key_prev_state._Progress = 0;
+                key_prev_state._Progress = 1.0;
                 pressedKeys[activeKey] = key_prev_state;
             }
             else
             {
                 KeyProgress new_key;
                 new_key.currColor = settings.GetVariable<long>("kick");
-                new_key._Progress = 0;
+                new_key._Progress = 1.0;
                 pressedKeys.Add(activeKey, new_key);
             }
         }
@@ -173,15 +172,15 @@ public class LightDecayEffect : IEffectScript
             {
                 continue;
             }
-            if (pressedKeys[pressedKey].currColor == 0 && pressedKeys[pressedKey]._Progress >= 1.0)
+            if (pressedKeys[pressedKey].currColor == 0 && pressedKeys[pressedKey]._Progress <= 0)
             {
                 pressedKeys.Remove(pressedKey);
             }
-            else if (pressedKeys[pressedKey]._Progress >= 1.0)
+            else if (pressedKeys[pressedKey]._Progress <= 0)
             {
                 KeyProgress newKeyProgress;
                 newKeyProgress.currColor = pressedKeys[pressedKey].currColor - 1;
-                newKeyProgress._Progress = 0;
+                newKeyProgress._Progress = 1.0;
                 pressedKeys[pressedKey] = newKeyProgress;
             }
             else
@@ -211,7 +210,10 @@ public class LightDecayEffect : IEffectScript
         layer.Fill(settings.GetVariable<RealColor>("baseColor").GetDrawingColor());
         foreach (var kvp in pressedKeys)
         {
-            layer.Set(kvp.Key, colors[kvp.Value.currColor].GetDrawingColor());
+            System.Drawing.Color backgroundColor = colors[kvp.Value.currColor - 1].GetDrawingColor();
+            System.Drawing.Color foregroundColor = colors[kvp.Value.currColor].GetDrawingColor();
+            System.Drawing.Color currentColor = ColorUtils.BlendColors(backgroundColor, foregroundColor, kvp.Value._Progress);
+            layer.Set(kvp.Key, currentColor);
         }
         activeKey = DeviceKeys.NONE;
 

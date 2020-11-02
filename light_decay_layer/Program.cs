@@ -81,21 +81,21 @@ public class LightDecayEffect : IEffectScript
 
         if (!settings.GetVariable<RealColor>("color4").Equals(black))
         {
-            return 5;
+            return 4;
         }
         else if (!settings.GetVariable<RealColor>("color3").Equals(black))
         {
-            return 4;
+            return 3;
         }
         else if (!settings.GetVariable<RealColor>("color2").Equals(black))
         {
-            return 3;
+            return 2;
         }
         else if (!settings.GetVariable<RealColor>("color1").Equals(black))
         {
-            return 2;
+            return 1;
         }
-        return 1;
+        return 0;
     }
 
     private double updateProgress(VariableRegistry settings, double currProgress, long ms)
@@ -140,7 +140,9 @@ public class LightDecayEffect : IEffectScript
             if (pressedKeys.ContainsKey(activeKey))
             {
                 KeyProgress key_prev_state = pressedKeys[activeKey];
-                key_prev_state.currColor += 1; //% numberOfColors;//numberOfColors;
+                long currColor = key_prev_state.currColor;
+                long currKick = settings.GetVariable<long>("kick");
+                key_prev_state.currColor = currColor + currKick > numberOfColors ? numberOfColors : currColor + currKick;
                 key_prev_state._Progress = 0;
                 pressedKeys[activeKey] = key_prev_state;
             }

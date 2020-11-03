@@ -56,7 +56,7 @@ public class LightDecayEffect : IEffectScript
         // Define the properties exposed to the user.
         Properties = new VariableRegistry();
         Properties.Register("baseColor", new RealColor(System.Drawing.Color.FromArgb(255, 0, 0)), "Base Color");
-        Properties.Register("color1", new RealColor(System.Drawing.Color.FromArgb(255, 255, 255)), "color1");
+        Properties.Register("color1", new RealColor(System.Drawing.Color.FromArgb(255, 255, 0)), "color1");
         Properties.Register("color2", new RealColor(System.Drawing.Color.FromArgb(0, 255, 0)), "color2");
         Properties.Register("color3", new RealColor(System.Drawing.Color.FromArgb(0, 0, 255)), "color3");
         Properties.Register("color4", new RealColor(System.Drawing.Color.FromArgb(255, 0, 255)), "color4");
@@ -172,7 +172,7 @@ public class LightDecayEffect : IEffectScript
             {
                 continue;
             }
-            if (pressedKeys[pressedKey].currColor == 0 && pressedKeys[pressedKey]._Progress <= 0)
+            if (pressedKeys[pressedKey].currColor == 1 && pressedKeys[pressedKey]._Progress <= 0)
             {
                 pressedKeys.Remove(pressedKey);
             }

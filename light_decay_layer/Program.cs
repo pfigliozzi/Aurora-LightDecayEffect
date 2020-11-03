@@ -27,18 +27,20 @@ public class LightDecayEffect : IEffectScript
     // Store each pressed key and its progress through the gradient
     public Dictionary<DeviceKeys, KeyProgress> pressedKeys = new Dictionary<DeviceKeys, KeyProgress>();
 
-    // Stopwatch for the frames
+    // Variables to record time between frames.
     private Stopwatch frameTimer = new Stopwatch();
     private long prev_ms = Time.GetMillisecondsSinceEpoch();
     private long curr_ms = Time.GetMillisecondsSinceEpoch();
     private long elapsed_ms = 0;
 
+    // Used to calculate the number of colors to use in the effect.
     public int numberOfColors;
-
-    private List<DeviceKeys> activeKeys = new List<DeviceKeys>();
-
     private RealColor black = new RealColor(System.Drawing.Color.FromArgb(0, 0, 0));
 
+    // A list of keys pressed this frame.
+    private List<DeviceKeys> activeKeys = new List<DeviceKeys>();
+
+    // A structure to store the current color of the key and its progress through the gradient.
     public struct KeyProgress
     {
         public long currColor;
@@ -97,6 +99,16 @@ public class LightDecayEffect : IEffectScript
         return 0;
     }
 
+    private RealColor[] getGradientColors(VariableRegistry settings)
+    {
+        RealColor[] colors = new RealColor[] { settings.GetVariable<RealColor>("baseColor"),
+            settings.GetVariable<RealColor>("color1"),
+            settings.GetVariable<RealColor>("color2"),
+            settings.GetVariable<RealColor>("color3"),
+            settings.GetVariable<RealColor>("color4") };
+        return colors;
+    }
+
     /// <summary>
     /// Updates progress for the decay effect
     /// </summary>
@@ -122,6 +134,15 @@ public class LightDecayEffect : IEffectScript
         return ms;
     }
 
+    // Returns the appropriate color for this frame based on the progress.
+    private System.Drawing.Color getColorThisFrame(KeyProgress keyProgress, RealColor[] colors)
+    {
+        System.Drawing.Color backgroundColor = colors[keyProgress.currColor - 1].GetDrawingColor();
+        System.Drawing.Color foregroundColor = colors[keyProgress.currColor].GetDrawingColor();
+        System.Drawing.Color currentColor = ColorUtils.BlendColors(backgroundColor, foregroundColor, keyProgress._Progress);
+        return currentColor;
+    }
+
     // Called every keyboard "frame" and updates the colours.
     public object UpdateLights(VariableRegistry settings, IGameState state = null)
     {
@@ -133,8 +154,6 @@ public class LightDecayEffect : IEffectScript
         EffectLayer layer = new EffectLayer(ID);
 
         long ms = msSinceLastFrame();
-
-
 
         layer.Fill(settings.GetVariable<RealColor>("baseColor").GetDrawingColor());
         if (pressedKeys.Count == 0 && activeKeys.Count == 0)
@@ -194,24 +213,18 @@ public class LightDecayEffect : IEffectScript
                 newKeyProgress._Progress = updateProgress(settings, pressedKeys[pressedKey]._Progress, ms);
                 pressedKeys[pressedKey] = newKeyProgress;
             }
-            // Figure out how to update the values in a has table.
         }
 
+        // Get the colors to use from the GUI.
+        RealColor[] colors = getGradientColors(settings);
 
-        RealColor[] colors = new RealColor[] { settings.GetVariable<RealColor>("baseColor"),
-            settings.GetVariable<RealColor>("color1"),
-            settings.GetVariable<RealColor>("color2"),
-            settings.GetVariable<RealColor>("color3"),
-            settings.GetVariable<RealColor>("color4") };
-
-        layer.Fill(settings.GetVariable<RealColor>("baseColor").GetDrawingColor());
-        foreach (var kvp in pressedKeys)
+        foreach (KeyValuePair<DeviceKeys, KeyProgress> kvp in pressedKeys)
         {
-            System.Drawing.Color backgroundColor = colors[kvp.Value.currColor - 1].GetDrawingColor();
-            System.Drawing.Color foregroundColor = colors[kvp.Value.currColor].GetDrawingColor();
-            System.Drawing.Color currentColor = ColorUtils.BlendColors(backgroundColor, foregroundColor, kvp.Value._Progress);
+            System.Drawing.Color currentColor = getColorThisFrame(kvp.Value, colors);
             layer.Set(kvp.Key, currentColor);
         }
+
+        // Clear the list of keys that were pressed this frame.
         activeKeys.Clear();
 
         return layer;

@@ -24,6 +24,7 @@ public class LightDecayEffect : IEffectScript
     // Default to an empty sequence.
     public KeySequence DefaultKeys = new KeySequence();
 
+    // Store each pressed key and its progress through the gradient
     public Dictionary<DeviceKeys, KeyProgress> pressedKeys = new Dictionary<DeviceKeys, KeyProgress>();
 
     // Stopwatch for the frames
@@ -35,11 +36,6 @@ public class LightDecayEffect : IEffectScript
     public int numberOfColors;
 
     private List<DeviceKeys> activeKeys = new List<DeviceKeys>();
-    private DeviceKeys lastKeyPressed;
-    private int length_pressed_keys = 0;
-    public Dictionary<DeviceKeys, KeyProgress> recordedPressedKeys = new Dictionary<DeviceKeys, KeyProgress>();
-    public double last_progrees = 0;
-    public long last_kick;
 
     private RealColor black = new RealColor(System.Drawing.Color.FromArgb(0, 0, 0));
 
@@ -73,28 +69,41 @@ public class LightDecayEffect : IEffectScript
         activeKeys.Add(e.GetDeviceKey());
     }
 
+    /// <summary>
+    /// Returns the number of colors to use in the gradient. If the later colors are set to black (RGB = 0, 0, 0) then
+    /// they will not be used in the color gradient.
+    /// </summary>
+    /// <param name="settings">The VariableRegistry settings used for the layer.</param>
+    /// <returns>Number of colors used in the effect</returns>
     private int getNumberOfColorsUsed(VariableRegistry settings)
     {
-
-        if (!settings.GetVariable<RealColor>("color4").Equals(black))
+        int blackAsInt = ColorUtils.GetIntFromColor(black);
+        if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color4")) != blackAsInt)
         {
             return 4;
         }
-        else if (!settings.GetVariable<RealColor>("color3").Equals(black))
+        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color3")) != blackAsInt)
         {
             return 3;
         }
-        else if (!settings.GetVariable<RealColor>("color2").Equals(black))
+        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color2")) != blackAsInt)
         {
             return 2;
         }
-        else if (!settings.GetVariable<RealColor>("color1").Equals(black))
+        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color1")) != blackAsInt)
         {
             return 1;
         }
         return 0;
     }
 
+    /// <summary>
+    /// Updates progress for the decay effect
+    /// </summary>
+    /// <param name="settings">The VariableRegistry settings used for the layer.</param>
+    /// <param name="currProgress">The current progress value.</param>
+    /// <param name="ms">The number of milliseconds that has passed between this frame and the last.</param>
+    /// <returns>An float representing the progess of the effect.</returns>
     private double updateProgress(VariableRegistry settings, double currProgress, long ms)
     {
         long curr_ms = (long)(currProgress * (double)settings.GetVariable<long>("decay"));
@@ -103,6 +112,16 @@ public class LightDecayEffect : IEffectScript
         return new_progress;
 
     }
+
+    // Calculates the time since last call.
+    private long msSinceLastFrame()
+    {
+        curr_ms = Time.GetMillisecondsSinceEpoch();
+        long ms = curr_ms - prev_ms;
+        prev_ms = curr_ms;
+        return ms;
+    }
+
     // Called every keyboard "frame" and updates the colours.
     public object UpdateLights(VariableRegistry settings, IGameState state = null)
     {
@@ -113,14 +132,7 @@ public class LightDecayEffect : IEffectScript
         // Create a layer to apply the effects to.
         EffectLayer layer = new EffectLayer(ID);
 
-        // Calculate time since last UpdateLights call
-        //int ms = (int)frameTimer.ElapsedMilliseconds;
-        //frameTimer.Restart();
-
-        curr_ms = Time.GetMillisecondsSinceEpoch();
-        long ms = curr_ms - prev_ms;
-        elapsed_ms = ms;
-        prev_ms = curr_ms;
+        long ms = msSinceLastFrame();
 
 
 
@@ -155,15 +167,6 @@ public class LightDecayEffect : IEffectScript
             }
         }
 
-        // Debugging stuff
-        if (pressedKeys.Count > 0)
-        {
-            length_pressed_keys = pressedKeys.Count;
-            recordedPressedKeys = new Dictionary<DeviceKeys, KeyProgress>(pressedKeys);
-            last_kick = settings.GetVariable<long>("kick");
-
-        }
-
         //List<DeviceKeys> removeKeys = new List<DeviceKeys>();
         List<DeviceKeys> keysList = new List<DeviceKeys>(pressedKeys.Keys);
         // Decreament all non-active keys
@@ -188,7 +191,6 @@ public class LightDecayEffect : IEffectScript
             {
                 KeyProgress newKeyProgress;
                 newKeyProgress.currColor = pressedKeys[pressedKey].currColor;
-                last_progrees = updateProgress(settings, pressedKeys[pressedKey]._Progress, ms);
                 newKeyProgress._Progress = updateProgress(settings, pressedKeys[pressedKey]._Progress, ms);
                 pressedKeys[pressedKey] = newKeyProgress;
             }

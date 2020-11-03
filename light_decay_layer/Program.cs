@@ -34,7 +34,7 @@ public class LightDecayEffect : IEffectScript
 
     public int numberOfColors;
 
-    private DeviceKeys activeKey;
+    private List<DeviceKeys> activeKeys = new List<DeviceKeys>();
     private DeviceKeys lastKeyPressed;
     private int length_pressed_keys = 0;
     public Dictionary<DeviceKeys, KeyProgress> recordedPressedKeys = new Dictionary<DeviceKeys, KeyProgress>();
@@ -61,8 +61,7 @@ public class LightDecayEffect : IEffectScript
         Properties.Register("color3", new RealColor(System.Drawing.Color.FromArgb(0, 0, 255)), "color3");
         Properties.Register("color4", new RealColor(System.Drawing.Color.FromArgb(255, 0, 255)), "color4");
         Properties.Register("kick", 1, "Kick towards higher color", 4, 1, "Each keypress will kick this this many colors above the base color.");
-        Properties.Register("decay", 1000, "Decay Time", null, 100, "Time it takes to decay to next color (milliseconds).");
-        Properties.Register("keys", new KeySequence(), "Main Keys");
+        Properties.Register("decay", 1500, "Decay Time", null, 100, "Time it takes to decay to next color (milliseconds).");
 
         // Start listening for keydown events.
         Global.InputEvents.KeyDown += InputEvents_KeyDown;
@@ -71,8 +70,7 @@ public class LightDecayEffect : IEffectScript
     // Capture keydown event and check if the pressed key is part of the sequence.
     private void InputEvents_KeyDown(object sender, KeyboardInputEventArgs e)
     {
-        if (settings != null && settings.GetVariable<KeySequence>("keys").keys.Contains(e.GetDeviceKey()))
-            activeKey = e.GetDeviceKey();
+        activeKeys.Add(e.GetDeviceKey());
     }
 
     private int getNumberOfColorsUsed(VariableRegistry settings)
@@ -127,30 +125,33 @@ public class LightDecayEffect : IEffectScript
 
 
         layer.Fill(settings.GetVariable<RealColor>("baseColor").GetDrawingColor());
-        if (pressedKeys.Count == 0 && activeKey == DeviceKeys.NONE)
+        if (pressedKeys.Count == 0 && activeKeys.Count == 0)
         {
             return layer;
         }
 
 
-        // Update the key if it is already a pressed key
-        if (activeKey != DeviceKeys.NONE)
+        // Add key if it hasn't been pressed, update it if it was already pressed.
+        if (activeKeys.Count != 0)
         {
-            if (pressedKeys.ContainsKey(activeKey))
+            foreach (DeviceKeys activeKey in activeKeys)
             {
-                KeyProgress key_prev_state = pressedKeys[activeKey];
-                long currColor = key_prev_state.currColor;
-                long currKick = settings.GetVariable<long>("kick");
-                key_prev_state.currColor = currColor + currKick > numberOfColors ? numberOfColors : currColor + currKick;
-                key_prev_state._Progress = 1.0;
-                pressedKeys[activeKey] = key_prev_state;
-            }
-            else
-            {
-                KeyProgress new_key;
-                new_key.currColor = settings.GetVariable<long>("kick");
-                new_key._Progress = 1.0;
-                pressedKeys.Add(activeKey, new_key);
+                if (pressedKeys.ContainsKey(activeKey))
+                {
+                    KeyProgress key_prev_state = pressedKeys[activeKey];
+                    long currColor = key_prev_state.currColor;
+                    long currKick = settings.GetVariable<long>("kick");
+                    key_prev_state.currColor = currColor + currKick > numberOfColors ? numberOfColors : currColor + currKick;
+                    key_prev_state._Progress = 1.0;
+                    pressedKeys[activeKey] = key_prev_state;
+                }
+                else
+                {
+                    KeyProgress new_key;
+                    new_key.currColor = settings.GetVariable<long>("kick");
+                    new_key._Progress = 1.0;
+                    pressedKeys.Add(activeKey, new_key);
+                }
             }
         }
 
@@ -168,7 +169,7 @@ public class LightDecayEffect : IEffectScript
         // Decreament all non-active keys
         foreach (DeviceKeys pressedKey in keysList)
         {
-            if (pressedKey == activeKey)
+            if (activeKeys.Contains(pressedKey))
             {
                 continue;
             }
@@ -201,12 +202,6 @@ public class LightDecayEffect : IEffectScript
             settings.GetVariable<RealColor>("color3"),
             settings.GetVariable<RealColor>("color4") };
 
-        if (activeKey != DeviceKeys.NONE)
-        {
-            lastKeyPressed = activeKey;
-        }
-
-
         layer.Fill(settings.GetVariable<RealColor>("baseColor").GetDrawingColor());
         foreach (var kvp in pressedKeys)
         {
@@ -215,7 +210,7 @@ public class LightDecayEffect : IEffectScript
             System.Drawing.Color currentColor = ColorUtils.BlendColors(backgroundColor, foregroundColor, kvp.Value._Progress);
             layer.Set(kvp.Key, currentColor);
         }
-        activeKey = DeviceKeys.NONE;
+        activeKeys.Clear();
 
         return layer;
     }

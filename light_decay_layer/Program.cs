@@ -65,73 +65,6 @@ public class LightDecayEffect : IEffectScript
     {
         activeKeys.Add(e.GetDeviceKey());
     }
-
-    /// <summary>
-    /// Returns the number of colors to use in the gradient. If the later colors are set to black (RGB = 0, 0, 0) then
-    /// they will not be used in the color gradient.
-    /// </summary>
-    /// <param name="settings">The VariableRegistry settings used for the layer.</param>
-    /// <returns>Number of colors used in the effect</returns>
-    private int getNumberOfColorsUsed(VariableRegistry settings)
-    {
-        int blackAsInt = ColorUtils.GetIntFromColor(black);
-        if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color4")) != blackAsInt)
-        {
-            return 4;
-        }
-        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color3")) != blackAsInt)
-        {
-            return 3;
-        }
-        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color2")) != blackAsInt)
-        {
-            return 2;
-        }
-        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color1")) != blackAsInt)
-        {
-            return 1;
-        }
-        return 0;
-    }
-
-    // Get the gradient colors as an array in order of the gradient for the effect.
-    private RealColor[] getGradientColors(VariableRegistry settings)
-    {
-        RealColor[] colors = new RealColor[] { settings.GetVariable<RealColor>("baseColor"),
-            settings.GetVariable<RealColor>("color1"),
-            settings.GetVariable<RealColor>("color2"),
-            settings.GetVariable<RealColor>("color3"),
-            settings.GetVariable<RealColor>("color4") };
-        return colors;
-    }
-
-    // Updates progress for the decay effect
-    private double updateProgress(long decay_ms, double currProgress, long ms)
-    {
-        long curr_ms = (long)(currProgress * (double)decay_ms);
-        curr_ms -= ms;
-        double new_progress = (double)curr_ms / (double)decay_ms;
-        return new_progress;
-    }
-
-    // Calculates the time since last call.
-    private long msSinceLastFrame()
-    {
-        curr_ms = Time.GetMillisecondsSinceEpoch();
-        long ms = curr_ms - prev_ms;
-        prev_ms = curr_ms;
-        return ms;
-    }
-
-    // Returns the appropriate color for this frame based on the progress.
-    private System.Drawing.Color getColorThisFrame(KeyProgress keyProgress, RealColor[] colors)
-    {
-        System.Drawing.Color backgroundColor = colors[keyProgress.currColor - 1].GetDrawingColor();
-        System.Drawing.Color foregroundColor = colors[keyProgress.currColor].GetDrawingColor();
-        System.Drawing.Color currentColor = ColorUtils.BlendColors(backgroundColor, foregroundColor, keyProgress._Progress);
-        return currentColor;
-    }
-
     // Called every keyboard "frame" and updates the colors.
     public object UpdateLights(VariableRegistry settings, IGameState state = null)
     {
@@ -157,26 +90,23 @@ public class LightDecayEffect : IEffectScript
         }
 
         // Add key if it hasn't been pressed, update it if it was already pressed.
-        if (activeKeys.Count != 0)
+        foreach (DeviceKeys activeKey in activeKeys)
         {
-            foreach (DeviceKeys activeKey in activeKeys)
+            if (pressedKeys.ContainsKey(activeKey))
             {
-                if (pressedKeys.ContainsKey(activeKey))
-                {
-                    KeyProgress key_prev_state = pressedKeys[activeKey];
-                    long currColor = key_prev_state.currColor;
-                    long currKick = kick;
-                    key_prev_state.currColor = currColor + currKick > numberOfColors ? numberOfColors : currColor + currKick;
-                    key_prev_state._Progress = 1.0;
-                    pressedKeys[activeKey] = key_prev_state;
-                }
-                else
-                {
-                    KeyProgress new_key;
-                    new_key.currColor = kick;
-                    new_key._Progress = 1.0;
-                    pressedKeys.Add(activeKey, new_key);
-                }
+                KeyProgress key_prev_state = pressedKeys[activeKey];
+                long currColor = key_prev_state.currColor;
+                long currKick = kick;
+                key_prev_state.currColor = currColor + currKick > numberOfColors ? numberOfColors : currColor + currKick;
+                key_prev_state._Progress = 1.0;
+                pressedKeys[activeKey] = key_prev_state;
+            }
+            else
+            {
+                KeyProgress new_key;
+                new_key.currColor = kick;
+                new_key._Progress = 1.0;
+                pressedKeys.Add(activeKey, new_key);
             }
         }
 
@@ -219,5 +149,67 @@ public class LightDecayEffect : IEffectScript
         activeKeys.Clear();
 
         return layer;
+    }
+    
+    // Returns the number of colors to use in the gradient. If the later colors are set to black (RGB = 0, 0, 0) then
+    // they will not be used in the color gradient.
+    private int getNumberOfColorsUsed(VariableRegistry settings)
+    {
+        int blackAsInt = ColorUtils.GetIntFromColor(black);
+        if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color4")) != blackAsInt)
+        {
+            return 4;
+        }
+        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color3")) != blackAsInt)
+        {
+            return 3;
+        }
+        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color2")) != blackAsInt)
+        {
+            return 2;
+        }
+        else if (ColorUtils.GetIntFromColor(settings.GetVariable<RealColor>("color1")) != blackAsInt)
+        {
+            return 1;
+        }
+        return 0;
+    }
+
+    // Get the gradient colors as an array in order of the gradient for the effect.
+    private RealColor[] getGradientColors(VariableRegistry settings)
+    {
+        RealColor[] colors = new RealColor[] { settings.GetVariable<RealColor>("baseColor"),
+            settings.GetVariable<RealColor>("color1"),
+            settings.GetVariable<RealColor>("color2"),
+            settings.GetVariable<RealColor>("color3"),
+            settings.GetVariable<RealColor>("color4") };
+        return colors;
+    }
+
+    // Calculates the time since last call.
+    private long msSinceLastFrame()
+    {
+        curr_ms = Time.GetMillisecondsSinceEpoch();
+        long ms = curr_ms - prev_ms;
+        prev_ms = curr_ms;
+        return ms;
+    }
+
+    // Updates progress for the decay effect
+    private double updateProgress(long decay_ms, double currProgress, long ms)
+    {
+        long curr_ms = (long)(currProgress * (double)decay_ms);
+        curr_ms -= ms;
+        double new_progress = (double)curr_ms / (double)decay_ms;
+        return new_progress;
+    }
+
+    // Returns the appropriate color for this frame based on the progress.
+    private System.Drawing.Color getColorThisFrame(KeyProgress keyProgress, RealColor[] colors)
+    {
+        System.Drawing.Color backgroundColor = colors[keyProgress.currColor - 1].GetDrawingColor();
+        System.Drawing.Color foregroundColor = colors[keyProgress.currColor].GetDrawingColor();
+        System.Drawing.Color currentColor = ColorUtils.BlendColors(backgroundColor, foregroundColor, keyProgress._Progress);
+        return currentColor;
     }
 }

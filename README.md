@@ -11,6 +11,9 @@ Then after one key press, that key will get a "kick" to higher color.
 Then the effect goes through a series of linear gradients through the previous colors until it gets to the base color. 
 If the same key is pressed while the gradients are being played then the gradient progression will be interrupted 
 and the key will get another "kick" to higher colors and then begin the linear gradients towards the base color.
+A screenshot of the interface for the layer is shown below:
+
+![Visualization of effect](documentation/figures/screenshot_interface.PNG)
 
 The best way to describe the effect is to think of it where the list of colors make a hill and every keystroke places the ball further up the hill.
 Then over time, the ball will roll down the hill, passing through each of the colors through a linear gradient. See the figure below for a visualization.
